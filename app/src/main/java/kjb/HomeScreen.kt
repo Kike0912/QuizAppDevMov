@@ -1,0 +1,4 @@
+package kjb
+
+class HomeScreen {
+}
