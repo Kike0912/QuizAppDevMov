@@ -13,16 +13,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun Categoria2(navController: NavController) {
     val preguntas = remember { obtenerPreguntasCategoria2() }
     var indiceActual by remember { mutableStateOf(0) }
     var aciertos by remember { mutableStateOf(0) }
     var respuestaSeleccionada by remember { mutableStateOf<Int?>(null) }
-    var colorFondo by remember { mutableStateOf(Color.White) }
+    var colorFondo by remember { mutableStateOf(Color(0xFFF5F5F5)) }
     var mostrarFinal by remember { mutableStateOf(false) }
 
     val pregunta = preguntas.getOrNull(indiceActual)
@@ -35,78 +40,128 @@ fun Categoria2(navController: NavController) {
             } else {
                 indiceActual++
                 respuestaSeleccionada = null
-                colorFondo = Color.White
+                colorFondo = Color(0xFFF5F5F5)
             }
         }
     }
 
     if (mostrarFinal) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
+            modifier = Modifier.fillMaxSize().padding(32.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("¡Juego terminado!", style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.height(16.dp))
+            Image(
+                painter = painterResource(id = R.drawable.trofeo),
+                contentDescription = "Trofeo de victoria",
+                modifier = Modifier
+                    .height(180.dp)
+                    .fillMaxWidth()
+                    //.padding(16.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             Text("Aciertos: $aciertos de ${preguntas.size}", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(32.dp))
-            Button(onClick = { navController.navigate("inicio") }) {
-                Text("Volver al menú")
+            Button(onClick = { navController.navigate("inicio") },
+                modifier = Modifier.width(200.dp)
+                    .height(50.dp)) {
+                Text("Volver al menú",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontSize = 20.sp))
             }
         }
     } else {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize()
                 .background(colorFondo)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.Top,
+            verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                "Pregunta ${indiceActual + 1} / ${preguntas.size}",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(8.dp)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = pregunta?.texto ?: "No hay preguntas",
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(16.dp)
-            )
-            if (pregunta != null) {
-                Image(
-                    painter = painterResource(id = pregunta.imagenId),
-                    contentDescription = "Imagen de la pregunta",
-                    modifier = Modifier
-                        .height(180.dp)
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                pregunta.opciones.forEachIndexed { index, textoOpcion ->
-                    Button(
-                        onClick = {
-                            if (respuestaSeleccionada == null) {
-                                respuestaSeleccionada = index
-                                if (index == pregunta.indiceCorrecto) {
-                                    aciertos++
-                                    colorFondo = Color(0xFFB9FBC0) // verde
-                                } else {
-                                    colorFondo = Color(0xFFFFC2C2) // rojo
+
+            Text("Pregunta ${indiceActual + 1} / ${preguntas.size}",
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
+                modifier = Modifier.padding(8.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            AnimatedContent(
+                targetState = pregunta,
+                transitionSpec = {
+                    (slideInHorizontally { width -> width } + fadeIn(tween(300))) with
+                            (slideOutHorizontally { width -> width } + fadeOut(tween(300)))
+                }, label = "PreguntaAnimada"
+            ) {preguntaActual ->
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ){
+                    Column(modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = preguntaActual?.texto ?: "No hay preguntas",
+                            style = MaterialTheme.typography.headlineSmall.copy(color = MaterialTheme.colorScheme.primary),
+                            textAlign = TextAlign.Center,
+                            //modifier = Modifier.padding(16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        if (preguntaActual != null) {
+                            Image(
+                                painter = painterResource(id = preguntaActual.imagenId),
+                                contentDescription = "Imagen de la pregunta",
+                                modifier = Modifier
+                                    .height(180.dp)
+                                    .fillMaxWidth()
+                                    //.padding(16.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            val visibleStates = remember(pregunta) {
+                                List(preguntaActual.opciones.size) { mutableStateOf(false) }
+                            }
+
+                            LaunchedEffect(pregunta) {
+                                visibleStates.forEachIndexed { i, state ->
+                                    delay(150L * i) // 150ms de retraso entre botones
+                                    state.value = true
                                 }
                             }
-                        },
-                        enabled = respuestaSeleccionada == null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Text(textoOpcion)
+
+                            preguntaActual.opciones.forEachIndexed { index, textoOpcion ->
+                                AnimatedVisibility(
+                                    visible = visibleStates[index].value,
+                                    enter = fadeIn(animationSpec = tween(500)) + slideInVertically(),
+                                    exit = fadeOut()
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            if (respuestaSeleccionada == null) {
+                                                respuestaSeleccionada = index
+                                                if (index == preguntaActual.indiceCorrecto) {
+                                                    aciertos++
+                                                    colorFondo = Color(0xFFB9FBC0) // verde
+                                                } else {
+                                                    colorFondo = Color(0xFFFFC2C2) // rojo
+                                                }
+                                            }
+                                        },
+                                        enabled = respuestaSeleccionada == null,
+                                        modifier = Modifier.width(275.dp).padding(vertical = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = textoOpcion,
+                                            style = MaterialTheme.typography.headlineSmall.copy(fontSize = 15.sp)
+                                            //modifier = Modifier.padding(6.dp))
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
